@@ -1,14 +1,12 @@
 // ==UserScript==
 // @name         Docker Hub Mirrors
-// @namespace    https://gist.github.com/iamspark1e/xxx
+// @namespace    https://github.com/iamspark1e/my-tampermonkey-scripts/blob/main/docker-mirror-urls.js
 // @version      0.1
 // @description  Show other mirrors to pull current docker image.
 // @author       iamspark1e
 // @license      AGPL-3.0-or-later
 // @match        *://hub.docker.com/_/*
-// @match        *://hub.docker.com/_/*/tags
-// @match		 *://hub.docker.com/search?q=*
-// @grant        GM_setClipboard
+// @match        *://hub.docker.com/r/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // ==/UserScript==
@@ -46,11 +44,89 @@
 // - 谷歌云   https://gcr.io
 // - 官方   https://registry.hub.docker.com
 
-(function() {
+(function () {
     'use strict';
     const ALTER_HUBS = [
-    	{"url": "registry.cn-hangzhou.aliyuncs.com", "name": "阿里云（杭州）"},
+        { "url": "registry.cn-hangzhou.aliyuncs.com", "name": "阿里云（杭州）" },
+        { "url": "mirror.ccs.tencentyun.com", "name": "腾讯云" },
+        { "url": "dockerhub.azk8s.com", "name": "微软云(Azure)" },
+        { "url": "hub-mirror.c.163.com", "name": "网易" },
+        { "url": "mirror.sjtu.edu.cn/docs/docker-registry", "name": "上海交通大学" },
+        { "url": "docker.nju.edu.cn", "name": "南京大学" },
+        { "url": "f1361db2.m.daocloud.io", "name": "DaoCloud" },
+        { "url": "gcr.io", "name": "Google" },
+        { "url": "registry.hub.docker.com", "name": "官方" },
     ]
+    const DOM_IDENTIFIER = "iamspark1e_tampermonkey_docker_mirror_helper"
+    const DOM_TPL = `
+        <label>
+            <span>Choose a mirror: </span>
+            <select>
+                ${ALTER_HUBS.map(hub => `<option value="${hub.url}">${hub.name}</option>`).join("")}
+            </select>
+        </label>
+        <div class="show_url" style="background-color:rgba(255,255,255,0.3);border-radius:4px;margin-top:4px;padding:4px;"></div>
+    `
 
-    // Your code here...
+    const GENERATE_SNIPPETS = (hub, image_name) => `
+        <p>URL: <span style="user-select:all;word-break:break-all;">${hub.url + '/' + image_name}</span></p>
+        <p>Docker pull: <code style="user-select:all;word-break:break-all;">docker pull ${hub.url + '/' + image_name}</code></p>
+    `
+
+    let siblingNode;
+    let currentHub = ALTER_HUBS[0];
+    let imageFullName;
+
+    function renderUrls() {
+        let dom = document.querySelector(`#${DOM_IDENTIFIER} div.show_url`);
+        dom.innerHTML = GENERATE_SNIPPETS(currentHub, imageFullName)
+    }
+    function selectHandler(e) {
+        currentHub = ALTER_HUBS.find(hub => hub.url === e.target.value);
+        renderUrls();
+    }
+
+    function initHelper() {
+        if (!siblingNode) {
+            console.error("no siblingNode, init failed");
+            return;
+        }
+        const mountNode = siblingNode.parentNode.parentNode;
+        imageFullName = siblingNode.innerText.replace("docker pull ", "");
+
+        if (!document.querySelector(`#${DOM_IDENTIFIER}`)) {
+            const testDiv = document.createElement("div")
+            testDiv.setAttribute("style", "border:1px solid #c4c8d1;background-color: #e1e2e6;border-radius: 4px;padding:8px;margin-top: 8px;");
+            testDiv.id = DOM_IDENTIFIER;
+            testDiv.innerHTML = DOM_TPL;
+            mountNode.appendChild(testDiv);
+
+            // addEventListener
+            const selector = document.querySelector(`#${DOM_IDENTIFIER} select`);
+            selector.addEventListener("change", selectHandler);
+            renderUrls();
+        }
+    }
+
+    let observer = new MutationObserver((mutationList, observer) => {
+        for (const mutation of mutationList) {
+            if (mutation.type === "childList") {
+                const tmp = document.querySelector('code[data-testid="copyPullCommandPullCommand"]')
+                if (tmp) {
+                    siblingNode = tmp;
+                    initHelper();
+                    observer.disconnect()
+                }
+            }
+        }
+    });
+    // *://hub.docker.com/_/*
+    // *://hub.docker.com/r/*
+    observer.observe(document.body, {
+        childList: true
+    })
+
+    // TODO:
+    // *://hub.docker.com/_/*/tags
+    // *://hub.docker.com/r/*/tags
 })();
