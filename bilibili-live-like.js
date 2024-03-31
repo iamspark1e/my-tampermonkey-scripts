@@ -36,11 +36,12 @@
 		}
 	});
 
-	// 监听按下时间
-	window.addEventListener('keydown', (e) => {
+	function keyDownHandler(e) {
 		if (totalCount >= 1000) {
 			window.alert("单人单个直播间最多点赞1000个！（如已开启随机多赞，已经关闭）");
 			ajaxHooker.unhook();
+			hookEnable = false;
+			window.removeEventListener('keydown', keyDownHandler);
 			return;
 		}
 		if (
@@ -57,5 +58,8 @@
 				}
 			}
 		}
-	})
+	}
+
+	// 监听按下时间
+	window.addEventListener('keydown', keyDownHandler)
 })();
