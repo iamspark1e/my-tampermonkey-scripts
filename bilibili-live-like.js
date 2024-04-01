@@ -11,6 +11,13 @@
 
 (function() {
 	'use strict';
+	// 简易版本，阻止B站PCDN
+	delete window.RTCPeerConnection
+	delete window.mozRTCPeerConnection
+	delete window.webkitRTCPeerConnection
+	delete window.RTCDataChannel
+	delete window.DataChannel
+	
 	// Global States
 	let gain = 50;
 	let totalCount = 0; // 单人1000赞以上为上限，增加一个计数器用来取消hook
